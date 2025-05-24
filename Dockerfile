@@ -3,6 +3,9 @@ FROM alpine/git as source
 # Clone the repo
 RUN git clone --depth 1 https://github.com/oschwartz10612/poppler-alpine /tmp/poppler-alpine
 
+# List directory content, to check if the content is correctly cloned
+RUN ls -la /tmp/poppler-alpine
+
 FROM python:3.10-slim-buster
 
 # Install poppler
