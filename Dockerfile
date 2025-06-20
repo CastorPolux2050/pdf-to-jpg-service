@@ -1,19 +1,35 @@
-FROM python:3.10-slim-buster
+# Usar imagen más ligera de Python
+FROM python:3.11-slim
 
-# Install poppler and other dependencies
-RUN apt-get update && apt-get install -y poppler-utils libglib2.0-0 libsm6 libxext6 libxrender-dev
+# Variables de entorno para optimización
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
 
-# Set up working directory
+# Instalar dependencias del sistema necesarias para PDF processing
+RUN apt-get update && apt-get install -y \
+    poppler-utils \
+    libpoppler-dev \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Crear directorio de trabajo
 WORKDIR /app
 
-# Copy the application code
-COPY . /app
+# Copiar requirements primero para aprovechar cache de Docker
+COPY requirements.txt .
 
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+# Instalar dependencias de Python
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# Expose the port
+# Copiar código de la aplicación
+COPY . .
+
+# Crear directorios para archivos temporales
+RUN mkdir -p temp_uploads temp_outputs
+
+# Exponer puerto
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Comando optimizado para Railway
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--timeout", "120", "--max-requests", "1000", "--max-requests-jitter", "50", "app:app"]
